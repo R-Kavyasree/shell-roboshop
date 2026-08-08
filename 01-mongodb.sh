@@ -41,3 +41,9 @@ systemctl status --now mongod
 VALIDATE $? "status is enabled"
 
 Verify port ss -lntp | grep 27017
+
+sed -i 's/127.0.0.1/0.0.0.0/g' /etc/mongod.conf
+VALIDATE $? "allowing remote to Mongodb"
+
+systemctl restart mongod
+VALIDATE $? "Restarting success"
