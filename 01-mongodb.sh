@@ -39,3 +39,5 @@ VALIDATE $? "starting and enabling Mongodb"
 
 systemctl status --now mongod
 VALIDATE $? "status is enabled"
+
+Verify port ss -lntp | grep 27017
