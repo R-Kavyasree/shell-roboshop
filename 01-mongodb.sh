@@ -36,3 +36,6 @@ VALIDATE $? "Installing Mongodb"
 
 systemctl enable --now mongod
 VALIDATE $? "starting and enabling Mongodb"
+
+systemctl status --now mongod
+VALIDATE $? "status is enabled"
