@@ -4,7 +4,7 @@ AMI_ID="ami-0220d79f3f480ecf5"
 ZONE_ID="Z07104562L34RC4JURX7T"
 DOMAIN_NAME="rkdaws90.online"
 
-for instance in $@
+for instance in "$@"
 do
     echo "Launching instance: $instance"
 
