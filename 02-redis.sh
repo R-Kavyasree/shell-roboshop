@@ -30,15 +30,15 @@ VALIDATE() {
         echo -e "$TIMESTAMP [INFO] $2 ... $G SUCCESS $N" | tee -a "$LOGS_FILE"
     fi
 }
-
-dnf module disable redis -y
-dnf module enable redis:7 -y
-dnf install redis -y
+    
+dnf module disable redis -y    &>> $LOGS_file
+dnf module enable redis:7 -y   &>> $LOGS_file
+dnf install redis -y           &>> $LOGS_file
 VALIDATE $? "Installling Redis:7"
 
 sed -i -e 's/1270.0.0.1/0.0.0.0/g' -e '/protected-mode/ c protected-mode no' /etc/redis/redis.conf
 VALIDATE $? "Allowing remote connections"
 
-systemctl enable redis
-systemctl start redis
-VALIDATE $? "Started Redis"
+systemctl enable redis   &>> $LOGS_file
+systemctl start redis  &>> $LOGS_file
+VALIDATE $? "Started Redis" &>> $LOGS_file
