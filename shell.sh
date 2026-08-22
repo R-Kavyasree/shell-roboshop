@@ -19,6 +19,11 @@ do
 
     echo "Instance ID: $INSTANCE_ID"
 
+    if [ -z "$INSTANCE_ID" ] || [ "$INSTANCE_ID" == "None" ]; then
+        echo "ERROR: Failed to launch $instance"
+        continue
+    fi
+
     echo "Waiting for instance to be running..."
 
     aws ec2 wait instance-running \
@@ -49,7 +54,10 @@ do
     echo "IP Address: $IP"
     echo "Route53 Record: $R53_RECORD"
 
-    ### Updating R53 Record ###
+    if [ -z "$IP" ] || [ "$IP" == "None" ]; then
+        echo "ERROR: IP address not found for $instance"
+        continue
+    fi
 
     aws route53 change-resource-record-sets \
         --hosted-zone-id "$ZONE_ID" \
@@ -71,5 +79,7 @@ do
                 }
             ]
         }'
+
+    echo "Route53 updated successfully for $R53_RECORD"
 
 done
