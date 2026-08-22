@@ -12,7 +12,7 @@ echo "Launching instance: $instance"
 --image-id ami-0220d79f3f480ecf5 \
 --instance-type t3.micro \
 --security-groups "roboshopcommon" "roboshop-$instance" \
---tag-specifications 'ResourceType=instance,Tags=[{Key=Name,Value=roboshop-$instance}]' \
+--tag-specifications "ResourceType=instance,Tags=[{Key=Name,Value=roboshop-$instance}]" \
 --query 'Instances[0].InstanceId' \
 --output text
    )
