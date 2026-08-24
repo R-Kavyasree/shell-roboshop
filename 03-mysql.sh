@@ -6,7 +6,7 @@ sudo mkdir -p "$LOGS_FOLDER"
 sudo chown -R ec2-user:ec2-user "$LOGS_FOLDER"
 sudo chmod -R 755 "$LOGS_FOLDER"
 
-LOGS_FILE="$LOGS_FOLDER/01-mongodb.sh.LOG"
+LOGS_FILE="$LOGS_FOLDER/03-mysql.sh.LOG"
 
 USERID=$(id -u)
 
@@ -23,6 +23,7 @@ if [ "$USERID" -ne 0 ]; then
 fi
 
 VALIDATE() {
+
     if [ "$1" -ne 0 ]; then
         echo -e "$TIMESTAMP [ERROR] $2.... $R FAILURE $N" | tee -a "$LOGS_FILE"
         exit 1
@@ -31,13 +32,14 @@ VALIDATE() {
     fi
 }
 
-dnf install mysql-server -y &>> $LOGS_FILE
-VALIDATE $? "iNSTALLING MYSQL SERVER"
+dnf install mysql-server -y &>> "$LOGS_FILE"
+VALIDATE $? "Installing MySQL Server"
 
-systemctl enable mysqld &>> $LOGS_FILE
-systemctl start mysqld &>> $LOGS_FILE
-VALIDATE &? "Enable and start MYSQL server"
+systemctl enable mysqld &>> "$LOGS_FILE"
+VALIDATE $? "Enabling MySQL Server"
 
-mysql_secure_installation --set-root-pass Roboshop@1
-Validate &? "setting up root password"
+systemctl start mysqld &>> "$LOGS_FILE"
+VALIDATE $? "Starting MySQL Server"
 
+mysql_secure_installation --set-root-pass Roboshop@1 &>> "$LOGS_FILE"
+VALIDATE $? "Setting up MySQL root password"
