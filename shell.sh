@@ -8,15 +8,13 @@ for instance in "$@"
 do
     echo "Launching instance: $instance"
 
-    if [ "$instance" == "rabbitmq" ]; then
-        SECURITY_GROUP="Rabbitmq rs"
-
-    elif [ "$instance" == "mysql" ]; then
+    if [ "$instance" == "mysql" ]; then
         SECURITY_GROUP="Mysqlrs"
-
     else
         SECURITY_GROUP="roboshop-$instance"
     fi
+
+    echo "Using Security Group: $SECURITY_GROUP"
 
     INSTANCE_ID=$(aws ec2 run-instances \
         --image-id "$AMI_ID" \
