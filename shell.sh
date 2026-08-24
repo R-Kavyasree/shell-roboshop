@@ -8,10 +8,16 @@ for instance in "$@"
 do
     echo "Launching instance: $instance"
 
+    if [ "$instance" == "rabbitmq" ]; then
+        SECURITY_GROUP="Rabbitmq rs"
+    else
+        SECURITY_GROUP="roboshop-$instance"
+    fi
+
     INSTANCE_ID=$(aws ec2 run-instances \
         --image-id "$AMI_ID" \
         --instance-type t3.micro \
-        --security-groups roboshopcommon "roboshop-$instance" \
+        --security-groups roboshopcommon "$SECURITY_GROUP" \
         --tag-specifications "ResourceType=instance,Tags=[{Key=Name,Value=roboshop-$instance}]" \
         --query 'Instances[0].InstanceId' \
         --output text
@@ -69,7 +75,7 @@ do
                     "ResourceRecordSet": {
                         "Name": "'"$R53_RECORD"'",
                         "Type": "A",
-                        "TTL": 1,
+                        "TTL": 30,
                         "ResourceRecords": [
                             {
                                 "Value": "'"$IP"'"
