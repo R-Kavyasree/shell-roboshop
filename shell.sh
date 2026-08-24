@@ -1,93 +1,118 @@
 #!/bin/bash
 
-AMI_ID="ami-0220d79f3f480ecf5"
-ZONE_ID="Z07104562L34RC4JURX7T"
-DOMAIN_NAME="rkdaws90.online"
+AMI_ID="ami-0c02fb55956c7d316"
+INSTANCE_TYPE="t3.micro"
+COMMON_SG="roboshop"
 
-for instance in "$@"
-do
-    echo "Launching instance: $instance"
+instance=$1
 
-    if [ "$instance" == "mysql" ]; then
-        SECURITY_GROUP="Mysqlrs"
-    else
-        SECURITY_GROUP="roboshop-$instance"
-    fi
+if [ -z "$instance" ]; then
+    echo "Usage: sh shell.sh <component>"
+    echo "Example: sh shell.sh rabbitmq"
+    exit 1
+fi
 
-    echo "Using Security Group: $SECURITY_GROUP"
+echo "Launching instance: $instance"
 
-    INSTANCE_ID=$(aws ec2 run-instances \
-        --image-id "$AMI_ID" \
-        --instance-type t3.micro \
-        --security-groups roboshopcommon "$SECURITY_GROUP" \
-        --tag-specifications "ResourceType=instance,Tags=[{Key=Name,Value=roboshop-$instance}]" \
-        --query 'Instances[0].InstanceId' \
-        --output text
-    )
+# Get Security Group ID
+SECURITY_GROUP=$(aws ec2 describe-security-groups \
+    --group-names "$COMMON_SG" \
+    --query 'SecurityGroups[0].GroupId' \
+    --output text)
 
-    echo "Instance ID: $INSTANCE_ID"
+if [ "$SECURITY_GROUP" == "None" ] || [ -z "$SECURITY_GROUP" ]; then
+    echo "ERROR: Security group '$COMMON_SG' not found"
+    exit 1
+fi
 
-    if [ -z "$INSTANCE_ID" ] || [ "$INSTANCE_ID" == "None" ]; then
-        echo "ERROR: Failed to launch $instance"
-        continue
-    fi
+echo "Using Security Group: $SECURITY_GROUP"
 
-    echo "Waiting for instance to be running..."
+# Launch EC2 instance
+INSTANCE_ID=$(aws ec2 run-instances \
+    --image-id "$AMI_ID" \
+    --instance-type "$INSTANCE_TYPE" \
+    --security-group-ids "$SECURITY_GROUP" \
+    --tag-specifications "ResourceType=instance,Tags=[{Key=Name,Value=roboshop-$instance}]" \
+    --query 'Instances[0].InstanceId' \
+    --output text)
 
-    aws ec2 wait instance-running \
-        --instance-ids "$INSTANCE_ID"
+echo "Instance ID: $INSTANCE_ID"
 
-    if [ "$instance" == "frontend" ]; then
+if [ -z "$INSTANCE_ID" ] || [ "$INSTANCE_ID" == "None" ]; then
+    echo "ERROR: Instance launch failed"
+    exit 1
+fi
 
-        IP=$(aws ec2 describe-instances \
-            --instance-ids "$INSTANCE_ID" \
-            --query 'Reservations[0].Instances[0].PublicIpAddress' \
-            --output text
-        )
+echo "Waiting for instance to reach running state..."
 
-        R53_RECORD="$DOMAIN_NAME"
+aws ec2 wait instance-running \
+    --instance-ids "$INSTANCE_ID"
 
-    else
+echo "Instance $instance is running"
 
-        IP=$(aws ec2 describe-instances \
-            --instance-ids "$INSTANCE_ID" \
-            --query 'Reservations[0].Instances[0].PrivateIpAddress' \
-            --output text
-        )
+# Get private IP
+PRIVATE_IP=$(aws ec2 describe-instances \
+    --instance-ids "$INSTANCE_ID" \
+    --query 'Reservations[0].Instances[0].PrivateIpAddress' \
+    --output text)
 
-        R53_RECORD="$instance.$DOMAIN_NAME"
+echo "Private IP: $PRIVATE_IP"
 
-    fi
+# Component-specific setup
+case "$instance" in
 
-    echo "IP Address: $IP"
-    echo "Route53 Record: $R53_RECORD"
+    mongodb
+        echo "MongoDB server launched"
+        ;;
 
-    if [ -z "$IP" ] || [ "$IP" == "None" ]; then
-        echo "ERROR: IP address not found for $instance"
-        continue
-    fi
+    mysql
+        echo "MySQL server launched"
+        ;;
 
-    aws route53 change-resource-record-sets \
-        --hosted-zone-id "$ZONE_ID" \
-        --change-batch '{
-            "Comment": "update a record to new IP",
-            "Changes": [
-                {
-                    "Action": "UPSERT",
-                    "ResourceRecordSet": {
-                        "Name": "'"$R53_RECORD"'",
-                        "Type": "A",
-                        "TTL": 30,
-                        "ResourceRecords": [
-                            {
-                                "Value": "'"$IP"'"
-                            }
-                        ]
-                    }
-                }
-            ]
-        }'
+    redis
+        echo "Redis server launched"
+        ;;
 
-    echo "Route53 updated successfully for $R53_RECORD"
+    rabbitmq
+        echo "RabbitMQ server launched"
+        ;;
 
-done
+    catalogue
+        echo "Catalogue server launched"
+        ;;
+
+    user
+        echo "User server launched"
+        ;;
+
+    cart
+        echo "Cart server launched"
+        ;;
+
+    shipping
+        echo "Shipping server launched"
+        ;;
+
+    payment
+        echo "Payment server launched"
+        ;;
+
+    dispatch
+        echo "Dispatch server launched"
+        ;;
+
+    frontend
+        echo "Frontend server launched"
+        ;;
+
+    *
+        echo "WARNING: No specific setup for $instance"
+        ;;
+
+esac
+
+echo "-----------------------------------"
+echo "Component : $instance"
+echo "Instance  : $INSTANCE_ID"
+echo "Private IP: $PRIVATE_IP"
+echo "-----------------------------------"
