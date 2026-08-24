@@ -10,6 +10,10 @@ do
 
     if [ "$instance" == "rabbitmq" ]; then
         SECURITY_GROUP="Rabbitmq rs"
+
+    elif [ "$instance" == "mysql" ]; then
+        SECURITY_GROUP="Mysqlrs"
+
     else
         SECURITY_GROUP="roboshop-$instance"
     fi
