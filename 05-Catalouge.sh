@@ -43,3 +43,6 @@ VALIDATE $? "Installing  nodejs "
 
 useradd --system --home /app --shell /sbin/nologin --comment "roboshop system user" roboshop &>> "$LOGS_FILE"
 VALIDATE $? "Setting up nodejs  root password"
+
+mkdir app
+VALIDATE $? "creating directory"
