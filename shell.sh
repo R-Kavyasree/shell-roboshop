@@ -1,118 +1,139 @@
 #!/bin/bash
 
-AMI_ID="ami-0c02fb55956c7d316"
-INSTANCE_TYPE="t3.micro"
-COMMON_SG="roboshop"
+AMI_ID="ami-0220d79f3f480ecf5"
+ZONE_ID="Z07104562L34RC4JURX7T"
+DOMAIN_NAME="rkdaws90.online"
 
-instance=$1
+for instance in "$@"
+do
+    echo "Launching instance: $instance"
 
-if [ -z "$instance" ]; then
-    echo "Usage: sh shell.sh <component>"
-    echo "Example: sh shell.sh rabbitmq"
-    exit 1
-fi
+    case "$instance" in
 
-echo "Launching instance: $instance"
+        mongodb
+            SECURITY_GROUPS=("roboshopcommon" "roboshop-mangodb")
+            ;;
 
-# Get Security Group ID
-SECURITY_GROUP=$(aws ec2 describe-security-groups \
-    --group-names "$COMMON_SG" \
-    --query 'SecurityGroups[0].GroupId' \
-    --output text)
+        mysql
+            SECURITY_GROUPS=("roboshopcommon" "Mysqlrs")
+            ;;
 
-if [ "$SECURITY_GROUP" == "None" ] || [ -z "$SECURITY_GROUP" ]; then
-    echo "ERROR: Security group '$COMMON_SG' not found"
-    exit 1
-fi
+        redis
+            SECURITY_GROUPS=("roboshopcommon" "Redis _RS")
+            ;;
 
-echo "Using Security Group: $SECURITY_GROUP"
+        rabbitmq
+            SECURITY_GROUPS=("roboshopcommon" "Rabbitmq rs")
+            ;;
 
-# Launch EC2 instance
-INSTANCE_ID=$(aws ec2 run-instances \
-    --image-id "$AMI_ID" \
-    --instance-type "$INSTANCE_TYPE" \
-    --security-group-ids "$SECURITY_GROUP" \
-    --tag-specifications "ResourceType=instance,Tags=[{Key=Name,Value=roboshop-$instance}]" \
-    --query 'Instances[0].InstanceId' \
-    --output text)
+        catalogue
+            SECURITY_GROUPS=("roboshopcommon" "catalouge_RS")
+            ;;
 
-echo "Instance ID: $INSTANCE_ID"
+        user
+            SECURITY_GROUPS=("roboshopcommon" "User_RS")
+            ;;
+        cart
+            SECURITY_GROUPS=("roboshopcommon" "Cart_RS")
+            ;;
 
-if [ -z "$INSTANCE_ID" ] || [ "$INSTANCE_ID" == "None" ]; then
-    echo "ERROR: Instance launch failed"
-    exit 1
-fi
+        shipping
+            SECURITY_GROUPS=("roboshopcommon" "ShipmentRS")
+            ;;
 
-echo "Waiting for instance to reach running state..."
+        payment
+            SECURITY_GROUPS=("roboshopcommon" "PaymentsRS")
+            ;;
 
-aws ec2 wait instance-running \
-    --instance-ids "$INSTANCE_ID"
+        dispatch
+            SECURITY_GROUPS=("roboshopcommon" "Dispatch RS")
+            ;;
 
-echo "Instance $instance is running"
+        frontend
+            SECURITY_GROUPS=("roboshopcommon" "Frontend_RS")
+            ;;
 
-# Get private IP
-PRIVATE_IP=$(aws ec2 describe-instances \
-    --instance-ids "$INSTANCE_ID" \
-    --query 'Reservations[0].Instances[0].PrivateIpAddress' \
-    --output text)
+        *
+            echo "ERROR: Unknown component: $instance"
+            continue
+            ;;
+    esac
 
-echo "Private IP: $PRIVATE_IP"
+    echo "Using Security Groups: ${SECURITY_GROUPS[*]}"
 
-# Component-specific setup
-case "$instance" in
+    INSTANCE_ID=$(aws ec2 run-instances \
+        --image-id "$AMI_ID" \
+        --instance-type t3.micro \
+        --security-groups "${SECURITY_GROUPS[@]}" \
+        --tag-specifications "ResourceType=instance,Tags=[{Key=Name,Value=roboshop-$instance}]" \
+        --query 'Instances[0].InstanceId' \
+        --output text
+    )
 
-    mongodb
-        echo "MongoDB server launched"
-        ;;
+    echo "Instance ID: $INSTANCE_ID"
 
-    mysql
-        echo "MySQL server launched"
-        ;;
+    if [ -z "$INSTANCE_ID" ] || [ "$INSTANCE_ID" == "None" ]; then
+        echo "ERROR: Failed to launch $instance"
+        continue
+    fi
 
-    redis
-        echo "Redis server launched"
-        ;;
+    echo "Waiting for instance to be running..."
 
-    rabbitmq
-        echo "RabbitMQ server launched"
-        ;;
+    aws ec2 wait instance-running \
+        --instance-ids "$INSTANCE_ID"
 
-    catalogue
-        echo "Catalogue server launched"
-        ;;
+    if [ "$instance" == "frontend" ]; then
 
-    user
-        echo "User server launched"
-        ;;
+        IP=$(aws ec2 describe-instances \
+            --instance-ids "$INSTANCE_ID" \
+            --query 'Reservations[0].Instances[0].PublicIpAddress' \
+            --output text
+        )
 
-    cart
-        echo "Cart server launched"
-        ;;
+        R53_RECORD="$DOMAIN_NAME"
 
-    shipping
-        echo "Shipping server launched"
-        ;;
+    else
 
-    payment
-        echo "Payment server launched"
-        ;;
+        IP=$(aws ec2 describe-instances \
+            --instance-ids "$INSTANCE_ID" \
+            --query 'Reservations[0].Instances[0].PrivateIpAddress' \
+            --output text
+        )
 
-    dispatch
-        echo "Dispatch server launched"
-        ;;
+        R53_RECORD="$instance.$DOMAIN_NAME"
 
-    frontend
-        echo "Frontend server launched"
-        ;;
+    fi
 
-    *
-        echo "WARNING: No specific setup for $instance"
-        ;;
+    echo "IP Address: $IP"
+    echo "Route53 Record: $R53_RECORD"
 
-esac
+    if [ -z "$IP" ] || [ "$IP" == "None" ]; then
+        echo "ERROR: IP address not found for $instance"
+        continue
+    fi
 
-echo "-----------------------------------"
-echo "Component : $instance"
-echo "Instance  : $INSTANCE_ID"
-echo "Private IP: $PRIVATE_IP"
-echo "-----------------------------------"
+    aws route53 change-resource-record-sets \
+        --hosted-zone-id "$ZONE_ID" \
+        --change-batch '{
+            "Comment": "update a record to new IP",
+            "Changes": [
+                {
+                    "Action": "UPSERT",
+                    "ResourceRecordSet": {
+                        "Name": "'"$R53_RECORD"'",
+                        "Type": "A",
+                        "TTL": 1,
+                        "ResourceRecords": [
+                            {
+                                "Value": "'"$IP"'"
+                            }
+                        ]
+                    }
+                }
+            ]
+        }'
+
+    echo "Route53 updated successfully for $R53_RECORD"
+    echo "----------------------------------------"
+
+done
