@@ -8,67 +8,64 @@ for instance in "$@"
 do
     echo "Launching instance: $instance"
 
-    case "$instance" in
+    if [ "$instance" == "mongodb" ]; then
+        SG1="roboshopcommon"
+        SG2="roboshop-mangodb"
 
-        mongodb
-            SECURITY_GROUPS=("roboshopcommon" "roboshop-mangodb")
-            ;;
+    elif [ "$instance" == "mysql" ]; then
+        SG1="roboshopcommon"
+        SG2="Mysqlrs"
 
-        mysql
-            SECURITY_GROUPS=("roboshopcommon" "Mysqlrs")
-            ;;
+    elif [ "$instance" == "redis" ]; then
+        SG1="roboshopcommon"
+        SG2="Redis _RS"
 
-        redis
-            SECURITY_GROUPS=("roboshopcommon" "Redis _RS")
-            ;;
+    elif [ "$instance" == "rabbitmq" ]; then
+        SG1="roboshopcommon"
+        SG2="Rabbitmq rs"
 
-        rabbitmq
-            SECURITY_GROUPS=("roboshopcommon" "Rabbitmq rs")
-            ;;
+    elif [ "$instance" == "catalogue" ] || [ "$instance" == "Catalouge" ]; then
+        SG1="roboshopcommon"
+        SG2="catalouge_RS"
 
-        catalogue
-            SECURITY_GROUPS=("roboshopcommon" "catalouge_RS")
-            ;;
+    elif [ "$instance" == "user" ]; then
+        SG1="roboshopcommon"
+        SG2="User_RS"
 
-        user
-            SECURITY_GROUPS=("roboshopcommon" "User_RS")
-            ;;
-        cart
-            SECURITY_GROUPS=("roboshopcommon" "Cart_RS")
-            ;;
+    elif [ "$instance" == "cart" ]; then
+        SG1="roboshopcommon"
+        SG2="Cart_RS"
 
-        shipping
-            SECURITY_GROUPS=("roboshopcommon" "ShipmentRS")
-            ;;
+    elif [ "$instance" == "shipping" ]; then
+        SG1="roboshopcommon"
+        SG2="ShipmentRS"
 
-        payment
-            SECURITY_GROUPS=("roboshopcommon" "PaymentsRS")
-            ;;
+    elif [ "$instance" == "payment" ]; then
+        SG1="roboshopcommon"
+        SG2="PaymentsRS"
 
-        dispatch
-            SECURITY_GROUPS=("roboshopcommon" "Dispatch RS")
-            ;;
+    elif [ "$instance" == "dispatch" ]; then
+        SG1="roboshopcommon"
+        SG2="Dispatch RS"
 
-        frontend
-            SECURITY_GROUPS=("roboshopcommon" "Frontend_RS")
-            ;;
+    elif [ "$instance" == "frontend" ]; then
+        SG1="roboshopcommon"
+        SG2="Frontend_RS"
 
-        *
-            echo "ERROR: Unknown component: $instance"
-            continue
-            ;;
-    esac
+    else
+        echo "ERROR: Unknown component: $instance"
+        continue
+    fi
 
-    echo "Using Security Groups: ${SECURITY_GROUPS[*]}"
+    echo "Using Security Groups: $SG1 and $SG2"
 
     INSTANCE_ID=$(aws ec2 run-instances \
         --image-id "$AMI_ID" \
         --instance-type t3.micro \
-        --security-groups "${SECURITY_GROUPS[@]}" \
+        --security-groups "$SG1" "$SG2" \
         --tag-specifications "ResourceType=instance,Tags=[{Key=Name,Value=roboshop-$instance}]" \
         --query 'Instances[0].InstanceId' \
-        --output text
-    )
+        --output text)
 
     echo "Instance ID: $INSTANCE_ID"
 
@@ -87,8 +84,7 @@ do
         IP=$(aws ec2 describe-instances \
             --instance-ids "$INSTANCE_ID" \
             --query 'Reservations[0].Instances[0].PublicIpAddress' \
-            --output text
-        )
+            --output text)
 
         R53_RECORD="$DOMAIN_NAME"
 
@@ -97,10 +93,13 @@ do
         IP=$(aws ec2 describe-instances \
             --instance-ids "$INSTANCE_ID" \
             --query 'Reservations[0].Instances[0].PrivateIpAddress' \
-            --output text
-        )
+            --output text)
 
-        R53_RECORD="$instance.$DOMAIN_NAME"
+        if [ "$instance" == "Catalouge" ]; then
+            R53_RECORD="catalogue.$DOMAIN_NAME"
+        else
+            R53_RECORD="$instance.$DOMAIN_NAME"
+        fi
 
     fi
 
