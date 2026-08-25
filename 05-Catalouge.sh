@@ -91,8 +91,8 @@ echo -e "Products already loaded .... $Y SKIPPING $N"
 
 fi
 
-systemctl enable catalouge
-systemctl restart catalouge
+systemctl enable Catalouge
+systemctl restart Catalouge
 
 VALIDATE $? "Restarting catalogue"
 
