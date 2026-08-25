@@ -45,40 +45,36 @@ VALIDATE $? "Installing  nodejs "
 
 id roboshop &>>$LOGS_FILE
 if [ $? -ne 0 ]; then
-useradd --system --home /app --shell /sbin/nologin --comment "roboshop system user" roboshop
-VALIDATE $? "Creating roboshop system user"
-else 
-echo -e " System user roboshop already created .. $Y Skipping $N"
+    useradd --system --home /app --shell /sbin/nologin --comment "roboshop system user" roboshop
+    VALIDATE $? "Creating roboshop system user"
+else
+    echo -e "System user roboshop already created .. $Y Skipping $N"
 fi
-VALIDATE $? "Setting up nodejs  root password"
-else 
+
 rm -rf /app
-VALIDATE $? "Removing exisiting code"
+VALIDATE $? "Removing existing code"
 
-rm -rf /tmp/catalouge.zip
-VALIDATE $? "Removed catalouge .zip"
+rm -rf /tmp/catalogue.zip
+VALIDATE $? "Removed catalogue.zip"
 
-mkdir -p /app &>>$LOGS_FILE
-VALIDATE $? "creating directory"
+mkdir -p /app
+VALIDATE $? "Creating directory"
 
-curl -o /tmp/catalogue.zip https://roboshop-artifacts.s3.amazonaws.com/catalogue-v3.zip 
-cd /app 
-unzip /tmp/catalogue.zip
-VALIDATE $? "Downloaded and extracted code"
-npm install    
-VALIDATE $? "Installling dependencies"
+curl -o /tmp/catalogue.zip https://roboshop-artifacts.s3.amazonaws.com/catalogue-v3.zip
+VALIDATE $? "Downloading catalogue code"
 
-cp $SCRIPT_DIR/Catalouge.service  /etc/systemd/system/Catalouge.service
+cd /app
+unzip -o /tmp/catalogue.zip
+VALIDATE $? "Extracted code"
+
+npm install
+VALIDATE $? "Installing dependencies"
+
+cp "$SCRIPT_DIR/Catalouge.service" /etc/systemd/system/Catalouge.service
 VALIDATE $? "Created systemctl service"
 
-cp $SCRIPT_DIR/mongo.repo  /etc/yum.repos.d/mongo.repo
+cp "$SCRIPT_DIR/mongo.repo" /etc/yum.repos.d/mongo.repo
 VALIDATE $? "Added mongodb repo"
 
 dnf install mongodb-mongosh -y
 VALIDATE $? "Installed mongodb client"
-
-
-
-
-
-
