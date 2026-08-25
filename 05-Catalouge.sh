@@ -83,9 +83,8 @@ VALIDATE $? "Installed mongodb client"
 INDEX=$(mongosh --host mongodb.rkdaws90.online  --eval 'db.getMongo().indexof("catalouge")')
 
 if [ $INDEX -lt 0 ]; then
-mongosh --host mongodb.rkdaws.online </app/db/master-data.js
+mongosh --host mongodb.rkdaws90.online </app/db/master-data.js
 VALIDATE $? "Load products"
-
 else
 
 echo -e "Products already loaded .... $Y SKIPPING $N"
