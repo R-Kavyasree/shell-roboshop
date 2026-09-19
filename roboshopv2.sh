@@ -16,7 +16,7 @@ if [ $# -lt 2 ]; then
    exit 1
 fi
 
-   ACTION=$1
+   Action=$1
    shift # first argument will be removed
 
    if [ "$Action" !=  "create" ] && [ "$ACTION" !=  "delete" $N ]; then
@@ -24,5 +24,3 @@ fi
    echo "USAGE: $0 [create/delete] [instance1] [instance2...]"
    exit 1
    fi
-
-   
