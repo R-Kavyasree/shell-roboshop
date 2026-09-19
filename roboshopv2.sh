@@ -10,17 +10,19 @@ Y="\e[33m"
 N="\e[0m"
 ## Validation ###
 
+
+
 if [ $# -lt 2 ]; then
-   echo -e " $R ERROR:: Atleast 2 arguments required $N"
-   echo "USAGE: $0 [create/delete] [instance1] [instance2...]"
-   exit 1
+    echo -e "$R ERROR: Atleast 2 arguments required $N"
+    echo "USAGE: $0 [create/delete] [instance1] [instance2...]"
+    exit 1
 fi
 
-   Action=$1
-   shift # first argument will be removed
+ACTION=$1
+shift # first argument will be removed
 
-   if [ "$Action" !=  "create" ] && [ "$ACTION" !=  "delete" $N ]; then
-   echo -e "$R  "ERROR:: First argument must be either create or delete $N"
-   echo "USAGE: $0 [create/delete] [instance1] [instance2...]"
-   exit 1
-   fi
+if [ "$ACTION" != "create" ] && [ "$ACTION" != "delete" ]; then
+    echo -e "$R ERROR: First argument must be either create or delete $N"
+    echo "USAGE: $0 [create/delete] [instance1] [instance2...]"
+    exit 1
+fi
